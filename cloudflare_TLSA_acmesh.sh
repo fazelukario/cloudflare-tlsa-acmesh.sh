@@ -22,7 +22,7 @@ log() {
   echo "[$(date)] $1"
 }
 
-# Function to generate certificate hash
+# Function to detect key type (RSA or EC) and generate certificate hash
 generate_cert() {
   key_file="$1"
   
@@ -31,16 +31,29 @@ generate_cert() {
     exit 1
   fi
 
+  # Detect key type using openssl
+  key_type=$(openssl pkey -in "$key_file" -text -noout 2>/dev/null | grep -E "RSA Private|EC Private" | awk '{print $1}')
+
   # Extract public key from the private key
-  pub_key=$(openssl rsa -in "$key_file" -pubout 2>/dev/null)
+  if [[ "$key_type" == "RSA" ]]; then
+    log "Detected RSA key type for $key_file"
+    pub_key=$(openssl rsa -in "$key_file" -pubout 2>/dev/null)
+  elif [[ "$key_type" == "EC" ]]; then
+    log "Detected EC key type for $key_file"
+    pub_key=$(openssl ec -in "$key_file" -pubout 2>/dev/null)
+  else
+    echo "Error: Unsupported key type or unable to detect key type for $key_file" >&2
+    exit 1
+  fi
+
   if [[ $? -ne 0 ]]; then
     echo "Error: Failed to extract public key from $key_file" >&2
     exit 1
   fi
 
   # Hash the public key with SHA256
-  cert_hash=$(echo "$pub_key" | openssl rsa -pubin -outform DER 2>/dev/null | openssl dgst -sha256 -binary | xxd -p -c 256)
-  
+  cert_hash=$(echo "$pub_key" | openssl pkey -pubin -outform DER 2>/dev/null | openssl dgst -sha256 -binary | xxd -p -c 256)
+
   echo "$cert_hash"
 }
 
