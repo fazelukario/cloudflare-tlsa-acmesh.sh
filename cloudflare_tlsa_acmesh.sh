@@ -177,19 +177,19 @@ delete_all_records() {
 log "Generating current certificate hash"
 generate_cert_output=$(generate_cert "$KEY_FILE")
 current_cert=$(echo "$generate_cert_output" | tail -n 1)
-echo $(echo "$generate_cert_output" | sed '$d')
+echo "$(echo "$generate_cert_output" | sed '$d')"
 log "Generated cert hash: $current_cert"
 
 log "Generating next certificate hash"
 generate_cert_output=$(generate_cert "$KEY_FILE_NEXT")
 next_cert=$(echo "$generate_cert_output" | tail -n 1)
-echo $(echo "$generate_cert_output" | sed '$d')
+echo "$(echo "$generate_cert_output" | sed '$d')"
 log "Generated next cert hash: $next_cert"
 
 log "Fetching TLSA records"
 get_tlsa_records_output=$(get_tlsa_records "$CF_ZONE_ID" "$CF_TOKEN" "$DOMAIN")
 tlsa_records=$(echo "$get_tlsa_records_output" | tail -n 1)
-echo $(echo "$get_tlsa_records_output" | sed '$d')
+echo "$(echo "$get_tlsa_records_output" | sed '$d')"
 
 # Check number of records and modify if necessary
 record_count=$(echo "$tlsa_records" | jq '.result | length')
