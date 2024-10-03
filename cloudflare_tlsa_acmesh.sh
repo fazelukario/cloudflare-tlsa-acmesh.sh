@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Ensure required environment variables are set
-required_env_vars=("KEY_FILE" "KEY_FILE_NEXT" "ZONE_ID" "API_TOKEN" "DOMAIN")
+required_env_vars=("KEY_FILE" "KEY_FILE_NEXT" "CF_ZONE_ID" "CF_TOKEN" "DOMAIN")
 for var in "${required_env_vars[@]}"; do
   if [[ -z "${!var}" ]]; then
     echo "Error: $var environment variable is not defined" >&2
@@ -12,7 +12,7 @@ done
 # Set default port and protocol from environment variables, or use default values
 PORT=${PORT:-25}
 PROTOCOL=${PROTOCOL:-"tcp"}
-API_URL="https://api.cloudflare.com/client/v4/zones"
+CF_API="https://api.cloudflare.com/client/v4/zones"
 USAGE=3
 SELECTOR=1
 MATCHING_TYPE=1
@@ -64,7 +64,7 @@ get_tlsa_records() {
   domain="$3"
   
   log "Fetching TLSA records for domain: $domain"
-  url="${API_URL}/${zone_id}/dns_records?name=_${PORT}._${PROTOCOL}.${domain}"
+  url="${CF_API}/${zone_id}/dns_records?name=_${PORT}._${PROTOCOL}.${domain}"
 
   # Capture both status code and response
   response=$(curl -s -w "\n%{http_code}" -X GET -H "Authorization: Bearer $api_token" "$url")
@@ -88,7 +88,7 @@ add_tlsa_record() {
   cert_hash="$4"
 
   log "Adding TLSA record with cert hash: $cert_hash"
-  url="${API_URL}/${zone_id}/dns_records"
+  url="${CF_API}/${zone_id}/dns_records"
   payload=$(cat <<EOF
 {
   "type": "TLSA",
@@ -125,7 +125,7 @@ modify_tlsa_record() {
   record_id="$5"
 
   log "Modifying TLSA record $record_id with cert hash: $cert_hash"
-  url="${API_URL}/${zone_id}/dns_records/$record_id"
+  url="${CF_API}/${zone_id}/dns_records/$record_id"
   payload=$(cat <<EOF
 {
   "type": "TLSA",
@@ -161,7 +161,7 @@ delete_all_records() {
 
   for record_id in $(echo "$tlsa_records" | jq -r '.result[].id'); do
     log "Deleting TLSA record: $record_id"
-    url="${API_URL}/${zone_id}/dns_records/$record_id"
+    url="${CF_API}/${zone_id}/dns_records/$record_id"
     response=$(curl -s -w "\n%{http_code}" -X DELETE -H "Authorization: Bearer $api_token" "$url")
     http_code=$(echo "$response" | tail -n1)
 
@@ -184,16 +184,16 @@ next_cert=$(generate_cert "$KEY_FILE_NEXT")
 log "Generated next cert hash: $next_cert"
 
 log "Fetching TLSA records"
-tlsa_records=$(get_tlsa_records "$ZONE_ID" "$API_TOKEN" "$DOMAIN")
+tlsa_records=$(get_tlsa_records "$CF_ZONE_ID" "$CF_TOKEN" "$DOMAIN")
 
 # Check number of records and modify if necessary
 record_count=$(echo "$tlsa_records" | jq '.result | length')
 
 if [[ $record_count -ne 2 ]]; then
   log "Incorrect number of TLSA records, recreating all."
-  delete_all_records "$ZONE_ID" "$API_TOKEN" "$tlsa_records"
-  add_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$next_cert"
-  add_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$current_cert"
+  delete_all_records "$CF_ZONE_ID" "$CF_TOKEN" "$tlsa_records"
+  add_tlsa_record "$CF_ZONE_ID" "$CF_TOKEN" "$DOMAIN" "$next_cert"
+  add_tlsa_record "$CF_ZONE_ID" "$CF_TOKEN" "$DOMAIN" "$current_cert"
 else
   log "Checking for required updates."
   cert0=$(echo "$tlsa_records" | jq -r '.result[0].data.certificate')
@@ -212,28 +212,28 @@ else
   # Case 3: cert0 == current_cert but cert1 is incorrect (modify cert1 to next_cert)
   elif [[ "$cert0" == "$current_cert" && "$cert1" != "$next_cert" ]]; then
     log "Updating TLSA record $id1 with next certificate."
-    modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$next_cert" "$id1"
+    modify_tlsa_record "$CF_ZONE_ID" "$CF_TOKEN" "$DOMAIN" "$next_cert" "$id1"
   
   # Case 4: cert0 == next_cert but cert1 is incorrect (modify cert1 to current_cert)
   elif [[ "$cert0" == "$next_cert" && "$cert1" != "$current_cert" ]]; then
     log "Updating TLSA record $id1 with current certificate."
-    modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$current_cert" "$id1"
+    modify_tlsa_record "$CF_ZONE_ID" "$CF_TOKEN" "$DOMAIN" "$current_cert" "$id1"
 
   # Case 5: cert1 == current_cert but cert0 is incorrect (modify cert0 to next_cert)
   elif [[ "$cert1" == "$current_cert" && "$cert0" != "$next_cert" ]]; then
     log "Updating TLSA record $id0 with next certificate."
-    modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$next_cert" "$id0"
+    modify_tlsa_record "$CF_ZONE_ID" "$CF_TOKEN" "$DOMAIN" "$next_cert" "$id0"
 
   # Case 6: cert1 == next_cert but cert0 is incorrect (modify cert0 to current_cert)
   elif [[ "$cert1" == "$next_cert" && "$cert0" != "$current_cert" ]]; then
     log "Updating TLSA record $id0 with current certificate."
-    modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$current_cert" "$id0"
+    modify_tlsa_record "$CF_ZONE_ID" "$CF_TOKEN" "$DOMAIN" "$current_cert" "$id0"
 
   # Case 7: Both certs are incorrect, modify both records
   else
     log "Neither TLSA records are correct. Updating both records."
-    modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$next_cert" "$id1"
-    modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$current_cert" "$id0"
+    modify_tlsa_record "$CF_ZONE_ID" "$CF_TOKEN" "$DOMAIN" "$next_cert" "$id1"
+    modify_tlsa_record "$CF_ZONE_ID" "$CF_TOKEN" "$DOMAIN" "$current_cert" "$id0"
   fi
 fi
 
