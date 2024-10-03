@@ -19,7 +19,7 @@ MATCHING_TYPE=1
 
 # Logging function
 log() {
-  echo "$(date) - $1"
+  echo "[$(date)] $1"
 }
 
 # Function to generate certificate hash
