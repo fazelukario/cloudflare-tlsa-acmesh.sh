@@ -4,7 +4,7 @@
 required_env_vars=("KEY_FILE" "KEY_FILE_NEXT" "ZONE_ID" "API_TOKEN" "DOMAIN")
 for var in "${required_env_vars[@]}"; do
   if [[ -z "${!var}" ]]; then
-    echo "Fatal: $var environment variable is not defined" >&2
+    echo "Error: $var environment variable is not defined" >&2
     exit 1
   fi
 done
@@ -27,14 +27,14 @@ generate_cert() {
   key_file="$1"
   
   if [[ ! -f "$key_file" ]]; then
-    echo "Fatal: key file $key_file does not exist" >&2
+    echo "Error: Key file $key_file does not exist" >&2
     exit 1
   fi
 
   # Extract public key from the private key
   pub_key=$(openssl rsa -in "$key_file" -pubout 2>/dev/null)
   if [[ $? -ne 0 ]]; then
-    echo "Fatal: failed to extract public key from $key_file" >&2
+    echo "Error: Failed to extract public key from $key_file" >&2
     exit 1
   fi
 
