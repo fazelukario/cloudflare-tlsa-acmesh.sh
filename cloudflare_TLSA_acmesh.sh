@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 
 # Ensure required environment variables are set
 required_env_vars=("KEY_FILE" "KEY_FILE_NEXT" "ZONE_ID" "API_TOKEN" "DOMAIN")
