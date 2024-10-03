@@ -152,11 +152,39 @@ else
   id0=$(echo "$tlsa_records" | jq -r '.result[0].id')
   id1=$(echo "$tlsa_records" | jq -r '.result[1].id')
 
-  if [[ "$cert0" != "$current_cert" ]] && [[ "$cert1" != "$next_cert" ]]; then
+  # Case 1: cert0 == current_cert && cert1 == next_cert (no change required)
+  if [[ "$cert0" == "$current_cert" && "$cert1" == "$next_cert" ]]; then
+    log "TLSA records are up-to-date. No changes required."
+  
+  # Case 2: cert0 == next_cert && cert1 == current_cert (no change required)
+  elif [[ "$cert0" == "$next_cert" && "$cert1" == "$current_cert" ]]; then
+    log "TLSA records are up-to-date but reversed. No changes required."
+  
+  # Case 3: cert0 == current_cert but cert1 is incorrect (modify cert1 to next_cert)
+  elif [[ "$cert0" == "$current_cert" && "$cert1" != "$next_cert" ]]; then
+    log "Updating TLSA record $id1 with next certificate."
+    modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$next_cert" "$id1"
+  
+  # Case 4: cert0 == next_cert but cert1 is incorrect (modify cert1 to current_cert)
+  elif [[ "$cert0" == "$next_cert" && "$cert1" != "$current_cert" ]]; then
+    log "Updating TLSA record $id1 with current certificate."
+    modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$current_cert" "$id1"
+
+  # Case 5: cert1 == current_cert but cert0 is incorrect (modify cert0 to next_cert)
+  elif [[ "$cert1" == "$current_cert" && "$cert0" != "$next_cert" ]]; then
+    log "Updating TLSA record $id0 with next certificate."
+    modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$next_cert" "$id0"
+
+  # Case 6: cert1 == next_cert but cert0 is incorrect (modify cert0 to current_cert)
+  elif [[ "$cert1" == "$next_cert" && "$cert0" != "$current_cert" ]]; then
+    log "Updating TLSA record $id0 with current certificate."
+    modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$current_cert" "$id0"
+
+  # Case 7: Both certs are incorrect, modify both records
+  else
+    log "Neither TLSA records are correct. Updating both records."
     modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$next_cert" "$id1"
     modify_tlsa_record "$ZONE_ID" "$API_TOKEN" "$DOMAIN" "$current_cert" "$id0"
-  else
-    log "No updates required."
   fi
 fi
 
