@@ -19,7 +19,7 @@ MATCHING_TYPE=1
 
 # Logging function
 log() {
-  printf '%s %s\n' "[$(date)]" "$1"
+  echo "[$(date)] $1"
 }
 
 # Function to detect key type (RSA or EC) from PEM header and generate certificate hash
@@ -175,11 +175,11 @@ delete_all_records() {
 
 # Main logic
 log "Generating current certificate hash"
-current_cert=$(generate_cert "$KEY_FILE" | tail -n 1)
+current_cert=$(generate_cert "$KEY_FILE")
 log "Generated cert hash: $current_cert"
 
 log "Generating next certificate hash"
-next_cert=$(generate_cert "$KEY_FILE_NEXT" | tail -n 1)
+next_cert=$(generate_cert "$KEY_FILE_NEXT")
 log "Generated next cert hash: $next_cert"
 
 log "Fetching TLSA records"
