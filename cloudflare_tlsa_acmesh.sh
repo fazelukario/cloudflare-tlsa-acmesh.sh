@@ -27,7 +27,7 @@ generate_cert() {
   key_file="$1"
   
   if [[ ! -f "$key_file" ]]; then
-    echo "Error: Key file $key_file does not exist" >&2
+    log "Error: Key file $key_file does not exist" >&2
     exit 1
   fi
 
@@ -41,12 +41,12 @@ generate_cert() {
     log "Detected EC key type for $key_file"
     pub_key=$(openssl ec -in "$key_file" -pubout 2>/dev/null)
   else
-    echo "Error: Unsupported key type or unable to detect key type for $key_file" >&2
+    log "Error: Unsupported key type or unable to detect key type for $key_file" >&2
     exit 1
   fi
 
   if [[ $? -ne 0 ]]; then
-    echo "Error: Failed to extract public key from $key_file" >&2
+    log "Error: Failed to extract public key from $key_file" >&2
     exit 1
   fi
 
