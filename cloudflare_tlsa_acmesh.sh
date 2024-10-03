@@ -22,7 +22,7 @@ log() {
   echo "[$(date)] $1"
 }
 
-# Function to detect key type (RSA or EC) and generate certificate hash
+# Function to detect key type (RSA or EC) from PEM header and generate certificate hash
 generate_cert() {
   key_file="$1"
   
@@ -31,14 +31,13 @@ generate_cert() {
     exit 1
   fi
 
-  # Detect key type using openssl
-  key_type=$(openssl pkey -in "$key_file" -text -noout 2>/dev/null | grep -E "RSA Private|EC Private" | awk '{print $1}')
+  # Read the first line of the key file to check the PEM header
+  pem_header=$(head -n 1 "$key_file")
 
-  # Extract public key from the private key
-  if [[ "$key_type" == "RSA" ]]; then
+  if [[ "$pem_header" == "-----BEGIN RSA PRIVATE KEY-----" ]]; then
     log "Detected RSA key type for $key_file"
     pub_key=$(openssl rsa -in "$key_file" -pubout 2>/dev/null)
-  elif [[ "$key_type" == "EC" ]]; then
+  elif [[ "$pem_header" == "-----BEGIN EC PRIVATE KEY-----" ]]; then
     log "Detected EC key type for $key_file"
     pub_key=$(openssl ec -in "$key_file" -pubout 2>/dev/null)
   else
