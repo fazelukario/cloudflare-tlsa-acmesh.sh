@@ -67,7 +67,7 @@ get_tlsa_records() {
 
   # Capture both status code and response
   response=$(curl -s -w "\n%{http_code}" -X GET -H "Authorization: Bearer $api_token" "$url")
-  http_code=$(echo "$response" | tail -n1)
+  http_code=$(echo "$response" | tail -n 1)
   response_body=$(echo "$response" | sed '$d')
 
   # Check HTTP status code
@@ -104,7 +104,7 @@ EOF
 
   response=$(curl -s -w "\n%{http_code}" -X POST -H "Authorization: Bearer $api_token" -H "Content-Type: application/json" \
     -d "$payload" "$url")
-  http_code=$(echo "$response" | tail -n1)
+  http_code=$(echo "$response" | tail -n 1)
   response_body=$(echo "$response" | sed '$d')
 
   if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
@@ -141,7 +141,7 @@ EOF
 
   response=$(curl -s -w "\n%{http_code}" -X PUT -H "Authorization: Bearer $api_token" -H "Content-Type: application/json" \
     -d "$payload" "$url")
-  http_code=$(echo "$response" | tail -n1)
+  http_code=$(echo "$response" | tail -n 1)
   response_body=$(echo "$response" | sed '$d')
 
   if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
@@ -162,7 +162,7 @@ delete_all_records() {
     log "Deleting TLSA record: $record_id"
     url="${CF_API}/${zone_id}/dns_records/$record_id"
     response=$(curl -s -w "\n%{http_code}" -X DELETE -H "Authorization: Bearer $api_token" "$url")
-    http_code=$(echo "$response" | tail -n1)
+    http_code=$(echo "$response" | tail -n 1)
 
     if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
       log "TLSA record $record_id deleted successfully."
