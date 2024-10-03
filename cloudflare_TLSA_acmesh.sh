@@ -52,9 +52,19 @@ get_tlsa_records() {
   
   log "Fetching TLSA records for domain: $domain"
   url="${API_URL}/${zone_id}/dns_records?name=_${PORT}._${PROTOCOL}.${domain}"
-  response=$(curl -s -X GET -H "Authorization: Bearer $api_token" "$url")
-  
-  echo "$response"
+
+  # Capture both status code and response
+  response=$(curl -s -w "\n%{http_code}" -X GET -H "Authorization: Bearer $api_token" "$url")
+  http_code=$(echo "$response" | tail -n1)
+  response_body=$(echo "$response" | sed '$d')
+
+  # Check HTTP status code
+  if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
+    echo "$response_body"
+  else
+    log "Failed to get TLSA records. HTTP status code: $http_code, response: $response_body" >&2
+    exit 1
+  fi
 }
 
 # Function to add TLSA record
@@ -80,8 +90,17 @@ add_tlsa_record() {
 EOF
 )
 
-  curl -s -X POST -H "Authorization: Bearer $api_token" -H "Content-Type: application/json" \
-    -d "$payload" "$url"
+  response=$(curl -s -w "\n%{http_code}" -X POST -H "Authorization: Bearer $api_token" -H "Content-Type: application/json" \
+    -d "$payload" "$url")
+  http_code=$(echo "$response" | tail -n1)
+  response_body=$(echo "$response" | sed '$d')
+
+  if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
+    log "TLSA record added successfully."
+  else
+    log "Failed to add TLSA record. HTTP status code: $http_code, response: $response_body" >&2
+    exit 1
+  fi
 }
 
 # Function to modify existing TLSA record
@@ -108,8 +127,17 @@ modify_tlsa_record() {
 EOF
 )
 
-  curl -s -X PUT -H "Authorization: Bearer $api_token" -H "Content-Type: application/json" \
-    -d "$payload" "$url"
+  response=$(curl -s -w "\n%{http_code}" -X PUT -H "Authorization: Bearer $api_token" -H "Content-Type: application/json" \
+    -d "$payload" "$url")
+  http_code=$(echo "$response" | tail -n1)
+  response_body=$(echo "$response" | sed '$d')
+
+  if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
+    log "TLSA record modified successfully."
+  else
+    log "Failed to modify TLSA record $record_id. HTTP status code: $http_code, response: $response_body" >&2
+    exit 1
+  fi
 }
 
 # Function to delete all TLSA records
@@ -121,7 +149,15 @@ delete_all_records() {
   for record_id in $(echo "$tlsa_records" | jq -r '.result[].id'); do
     log "Deleting TLSA record: $record_id"
     url="${API_URL}/${zone_id}/dns_records/$record_id"
-    curl -s -X DELETE -H "Authorization: Bearer $api_token" "$url"
+    response=$(curl -s -w "\n%{http_code}" -X DELETE -H "Authorization: Bearer $api_token" "$url")
+    http_code=$(echo "$response" | tail -n1)
+
+    if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
+      log "TLSA record $record_id deleted successfully."
+    else
+      log "Failed to delete TLSA record $record_id. HTTP status code: $http_code" >&2
+      exit 1
+    fi
   done
 }
 
